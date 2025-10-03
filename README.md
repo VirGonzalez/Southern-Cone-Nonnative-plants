@@ -8,14 +8,14 @@ This repository contains the workflow and code for analyzing the proportion of e
 
 ### 1. Data Loading & Preparation
 - **Input:** shapefile with data (`dataset.gpkg`)
-- Convert `tipo` to character → recode into urban categories (`Metropolis`, `Big cities`, etc.)
-- Fill missing values of `tipo` with `"Remote areas"` and convert into an ordered factor
+- Convert `urban level` to character → recode into urban categories (`Metropolis`, `Big cities`, etc.)
+- Fill missing values of `urban level` with `"Remote areas"` and convert into an ordered factor
 - Drop rows with `NA` in main predictors
 - Compute **exotic proportion** = exotics / (exotics + natives)
 - Transform proportion to fit a beta model (avoid 0 and 1)
 
 ### 2. Initial Exploration
-- Descriptive stats (mean, SD, sums) by urban level (`tipo`)
+- Descriptive stats (mean, SD, sums) by urban level (`urban level`)
 - Totals of exotics vs. natives
 
 ### 3. Predictor Preprocessing
@@ -26,13 +26,13 @@ This repository contains the workflow and code for analyzing the proportion of e
 - **Zero/one-inflated beta mixed model** with `glmmTMB`:
 
   ```r
-  proportion ~ predictors + (1|tipo), 
+  nn.plant.proportion ~ predictors + (1|urban level), 
   family = beta_family(link="logit"), 
   ziformula = ~1
 
 ### 4. Statistical Modeling
 - Includes quadratic effects (`temp²`, `precip²`)
-- Random intercept by urban level (`tipo`)
+- Random intercept by urban level (`urban level`)
 
 ### 5. Model Diagnostics & Summary
 - `summary(r4_v2)` → coefficients & interpretation
