@@ -30,45 +30,45 @@ library(viridis)      # escalas viridis
 # ----------------------------------------------------------------
 # 1. Cargar shapefile con datos
 # ----------------------------------------------------------------
-data <- st_read("Shapefile/pred3.shp")
+data <- st_read("Submission/dataset.gpkg")
 str(data)
-
+names(data)
 # ----------------------------------------------------------------
 # 2. Estadísticas descriptivas
 # ----------------------------------------------------------------
-data$tipo <- as.character(data$tipo)
+data$urban.level <- as.character(data$urban.level)
 
-mean_tax_per_group <- aggregate(data$proporcion, list(data$tipo), FUN = mean, na.rm = TRUE)
-sd_tax_per_group   <- aggregate(data$proporcion, list(data$tipo), FUN = sd, na.rm = TRUE)
+mean_tax_per_group <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = mean,native.richnessa.rm = TRUE)
+sd_tax_per_group   <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = sd,native.richnessa.rm = TRUE)
 merge(mean_tax_per_group, sd_tax_per_group, by = "Group.1")
 
-sum_tax_per_group <- aggregate(data$ocurrencia, list(data$tipo), FUN = sum, na.rm = TRUE)
+sum_tax_per_group <- aggregate(data$native_occurrence, list(data$urban.level), FUN = sum,native.richnessa.rm = TRUE)
 
-sum_exoticas <- sum(data$exoticas, na.rm = TRUE)
-sum_nativas  <- sum(data$ocurrencia, na.rm = TRUE)
+sum_exoticas <- sum(data$non.native.plant.occurrence,native.richnessa.rm = TRUE)
+sum_nativas  <- sum(data$native_occurrence,native.richnessa.rm = TRUE)
 sum_total    <- sum_exoticas + sum_nativas
 
 # ----------------------------------------------------------------
 # 3. Escalar variables predictoras
 # ----------------------------------------------------------------
 data <- data %>%
-  mutate(across(c(cultivomea, div, N, precipmean, 
-                  fundacionm, fuegosum, gravedadlo, tempmean),
+  mutate(across(c(crop.percentage, lc.lc.diversityersity,native.richnessative.richness, precipmean, 
+    mean.foundation, fire.frequency, urban.gravity, tempmean),
                 ~ as.numeric(scale(.)), 
                 .names = "{.col}_scaled"))
 
 # ----------------------------------------------------------------
-# 4. Recodificar niveles urbanos
+# 4. Recodificarnative.richnessiveles urbanos
 # ----------------------------------------------------------------
-data$tipo <- ifelse(data$tipomajori == 1.00, 'Metropoli',
-             ifelse(data$tipomajori == 2.00, 'Big cities',
-             ifelse(data$tipomajori == 3.00, 'Intermediate cities',
-             ifelse(data$tipomajori == 4.00, 'Small cities',
-             ifelse(data$tipomajori == 5.00, 'Towns', NA)))))
+data$urban.level <- ifelse(data$urban.level == 1.00, 'Metropoli',
+             ifelse(data$urban.level == 2.00, 'Big cities',
+             ifelse(data$urban.level == 3.00, 'Intermediate cities',
+             ifelse(data$urban.level == 4.00, 'Small cities',
+             ifelse(data$urban.level == 5.00, 'Towns',native.richnessA)))))
 
-data$tipo[is.na(data$tipo)] <- "Remote areas"
+data$urban.level[is.na(data$urban.level)] <- "Remote areas"
 
-data$tipo <- factor(data$tipo, levels = c('Metropoli', 'Big cities', 
+data$urban.level <- factor(data$urban.level, levels = c('Metropoli', 'Big cities', 
                                           'Intermediate cities', 'Small cities', 
                                           'Towns', 'Remote areas'))
 
@@ -76,17 +76,17 @@ data$tipo <- factor(data$tipo, levels = c('Metropoli', 'Big cities',
 # 5. Calcular proporción de exóticas y transformar
 # ----------------------------------------------------------------
 data <- data[!is.na(data$precipmean), ]
-data$proporcion <- data$exoticas / (data$exoticas + data$ocurrencia)
-data$proporcion <- (data$proporcion * (nrow(data) - 1) + 0.5) / nrow(data)
+data$nn.plant.proportion <- data$non.native.plant.occurrence / (data$non.native.plant.occurrence + data$native_occurrence)
+data$nn.plant.proportion <- (data$nn.plant.proportion * (nrow(data) - 1) + 0.5) /native.richnessrow(data)
 
 # ----------------------------------------------------------------
 # 6. Ajustar modelo mixto beta inflado en 0/1
 # ----------------------------------------------------------------
 r4_v2 <- glmmTMB(
-  proporcion ~ cultivomea_scaled + div_scaled + fundacionm_scaled + N_scaled +
+ nn.plant.proportion ~ crop.percentage_scaled + lc.diversity_scaled + mean.foundation_scaled +native.richness_scaled +
     precipmean_scaled + I(precipmean_scaled^2) +
     tempmean_scaled   + I(tempmean_scaled^2) +
-    (1|tipo),
+    (1|urban.level),
   data = data,
   family = beta_family(link = "logit"),
   ziformula = ~1
@@ -115,13 +115,13 @@ anova_tab$Chisq / sum(anova_tab$Chisq) * 100
 # ----------------------------------------------------------------
 # 9. Mapa espacial
 # ----------------------------------------------------------------
-map <- read_sf("Shapefile/lim2.shp")
+map <- read_sf("lim2.shp")
 
 ggplot() +
   annotation_map_tile(type = "osm", zoom = 2) +
-  geom_sf(data = data, aes(fill = proporcion), color = NA) +
-  geom_sf(data = map, fill = NA, color = "black") +
-  scale_fill_viridis_c(name = "Exotic plants proportion") +
+  geom_sf(data = data, aes(fill = proporcion), color =native.richness) +
+  geom_sf(data = map, fill =native.richness, color = "black") +
+  scale_fill_viridis_c(name = "Non-native plants proportion") +
   annotation_scale() +
   theme_classic()
 
@@ -131,31 +131,49 @@ ggplot() +
 # ----------------------------------------------------------------
 # Grilla TEMP
 # ----------------------------------------------------------------
+# Calcular medias y desviaciones de cada predictor
+mean_temp <- mean(data$tempmean, na.rm = TRUE)
+sd_temp   <- sd(data$tempmean, na.rm = TRUE)
+
+mean_prec <- mean(data$precipmean, na.rm = TRUE)
+sd_prec   <- sd(data$precipmean, na.rm = TRUE)
+
+mean_cult <- mean(data$crop.percentage, na.rm = TRUE)
+sd_cult   <- sd(data$crop.percentage, na.rm = TRUE)
+
+mean_lc.diversity <- mean(data$lc.diversity, na.rm = TRUE)
+sd_lc.diversity   <- sd(data$lc.diversity, na.rm = TRUE)
+
+mean_fund <- mean(data$mean.foundation, na.rm = TRUE)
+sd_fund   <- sd(data$mean.foundation, na.rm = TRUE)
+
+mean_N <- mean(data$native.richness, na.rm = TRUE)
+sd_N   <- sd(data$native.richness, na.rm = TRUE)
+
+# ----------------------------------------------------------------
+# Grilla TEMP
+# ----------------------------------------------------------------
 new_temp <- data.frame(
-  tempmean    = seq(min(data$tempmean, na.rm=TRUE),
-                    max(data$tempmean, na.rm=TRUE),
-                    length.out = 2431),
-  precipmean  = mean_prec,
-  cultivomea  = mean_cult,
-  div         = mean_div,
-  fundacionm  = mean_fund,
-  N           = mean_N,
-  tipo        = "Metropoli"
+  tempmean = seq(min(data$tempmean, na.rm = TRUE),
+                 max(data$tempmean, na.rm = TRUE),
+                 length.out = 2431),
+  precipmean = mean_prec,
+  crop.percentage = mean_cult,
+  lc.diversity = mean_lc.diversity,
+  mean.foundation = mean_fund,
+  native.richness = mean_N,
+  urban.level = "Metropoli"
 ) %>%
   mutate(
     tempmean_scaled   = (tempmean - mean_temp) / sd_temp,
     precipmean_scaled = (precipmean - mean_prec) / sd_prec,
-    cultivomea_scaled = (cultivomea - mean_cult) / sd_cult,
-    div_scaled        = (div - mean_div) / sd_div,
-    fundacionm_scaled = (fundacionm - mean_fund) / sd_fund,
-    N_scaled          = (N - mean_N) / sd_N,
+    crop.percentage_scaled = (crop.percentage - mean_cult) / sd_cult,
+    lc.diversity_scaled    = (lc.diversity - mean_lc.diversity) / sd_lc.diversity,
+    mean.foundation_scaled = (mean.foundation - mean_fund) / sd_fund,
+    native.richness_scaled = (native.richness - mean_N) / sd_N,
     `I(tempmean_scaled^2)`   = tempmean_scaled^2,
     `I(precipmean_scaled^2)` = precipmean_scaled^2
-  ) %>%
-  # mantener solo columnas que usa el modelo
-  dplyr::select(tipo, cultivomea_scaled, div_scaled, fundacionm_scaled, N_scaled,
-                tempmean_scaled, `I(tempmean_scaled^2)`,
-                precipmean_scaled, `I(precipmean_scaled^2)`)
+  )
 
 # Predicciones
 new_temp$fit <- predict(r4_v2, newdata = new_temp, type = "response", re.form = NA)
@@ -165,30 +183,26 @@ new_temp$fit <- predict(r4_v2, newdata = new_temp, type = "response", re.form = 
 # Grilla PRECIP
 # ----------------------------------------------------------------
 new_prec <- data.frame(
-  precipmean  = seq(min(data$precipmean, na.rm=TRUE), 
-                    max(data$precipmean, na.rm=TRUE), 
+  precipmean  = seq(min(data$precipmean, na.rm = TRUE), 
+                    max(data$precipmean, na.rm = TRUE), 
                     length.out = 2431),
   tempmean    = mean_temp,
-  cultivomea  = mean_cult,
-  div         = mean_div,
-  fundacionm  = mean_fund,
-  N           = mean_N,
-  tipo        = "Metropoli"
+  crop.percentage  = mean_cult,
+  lc.diversity     = mean_lc.diversity,
+  mean.foundation  = mean_fund,
+  native.richness  = mean_N,
+  urban.level      = "Metropoli"
 ) %>%
   mutate(
     tempmean_scaled   = (tempmean - mean_temp) / sd_temp,
     precipmean_scaled = (precipmean - mean_prec) / sd_prec,
-    cultivomea_scaled = (cultivomea - mean_cult) / sd_cult,
-    div_scaled        = (div - mean_div) / sd_div,
-    fundacionm_scaled = (fundacionm - mean_fund) / sd_fund,
-    N_scaled          = (N - mean_N) / sd_N,
+    crop.percentage_scaled = (crop.percentage - mean_cult) / sd_cult,
+    lc.diversity_scaled    = (lc.diversity - mean_lc.diversity) / sd_lc.diversity,
+    mean.foundation_scaled = (mean.foundation - mean_fund) / sd_fund,
+    native.richness_scaled = (native.richness - mean_N) / sd_N,
     `I(tempmean_scaled^2)`   = tempmean_scaled^2,
     `I(precipmean_scaled^2)` = precipmean_scaled^2
-  ) %>%
-  # mantener solo columnas que usa el modelo
-  dplyr::select(tipo, cultivomea_scaled, div_scaled, fundacionm_scaled, N_scaled,
-                tempmean_scaled, `I(tempmean_scaled^2)`,
-                precipmean_scaled, `I(precipmean_scaled^2)`)
+  )
 
 # Predicciones
 new_prec$fit <- predict(r4_v2, newdata = new_prec, type = "response", re.form = NA)
@@ -197,67 +211,39 @@ new_prec$fit <- predict(r4_v2, newdata = new_prec, type = "response", re.form = 
 # ----------------------------------------------------------------
 # Graficar curvas
 # ----------------------------------------------------------------
-p_temp <- ggplot(data, aes(x = tempmean, y = proporcion)) +
+p_temp <- ggplot(data, aes(x = tempmean, y = nn.plant.proportion)) +
   geom_point(alpha = 0.4) +
   geom_smooth(method = "loess", se = FALSE, color = "steelblue", linewidth = 2) +
-  geom_line(data = cbind(new_temp, tempmean = seq(min(data$tempmean, na.rm=TRUE),
-                                                  max(data$tempmean, na.rm=TRUE),
-                                                  length.out = 2431)),
+  geom_line(data = new_temp %>% arrange(tempmean),
             aes(x = tempmean, y = fit),
-            inherit.aes = FALSE, color = "darkred", linewidth = 2) +
+            inherit.aes = FALSE, color = "darkred", linewidth = 1) +
   theme_minimal(base_size = 14) +
   labs(x = "Mean temperature (°C)", y = "Nonnative plant proportion") +
   coord_cartesian(ylim = c(0, 1))
 
-p_prec <- ggplot(data, aes(x = precipmean, y = proporcion)) +
+p_prec <- ggplot(data, aes(x = precipmean, y = nn.plant.proportion)) +
   geom_point(alpha = 0.4) +
   geom_smooth(method = "loess", se = FALSE, color = "steelblue", linewidth = 2) +
-  geom_line(data = cbind(new_prec, precipmean = seq(min(data$precipmean, na.rm=TRUE),
-                                                    max(data$precipmean, na.rm=TRUE),
-                                                    length.out = 2431)),
+  geom_line(data = new_prec %>% arrange(precipmean),
             aes(x = precipmean, y = fit),
-            inherit.aes = FALSE, color = "darkred", linewidth = 2) +
+            inherit.aes = FALSE, color = "darkred", linewidth = 1) +
   theme_minimal(base_size = 14) +
   labs(x = "Mean precipitation (mm)", y = "") +
   coord_cartesian(ylim = c(0, 1))
 
+# Plot combinado
 final_plot <- p_temp | p_prec
-
 final_plot
 
-# Predicciones en escala logit con IC
-# =====================================================
-# Predicciones en escala logit: TEMP
-# =====================================================
-pred_temp <- predict(r4_v2, newdata = new_temp, type = "link", se.fit = TRUE, re.form = NA)
-new_temp$fit_link <- pred_temp$fit
-new_temp$se_link  <- pred_temp$se.fit
 
-new_temp <- new_temp %>%
-  mutate(
-    fit_link_low  = fit_link - 1.96 * se_link,
-    fit_link_high = fit_link + 1.96 * se_link
-  )
 
-# =====================================================
-# Predicciones en escala logit: PRECIP
-# =====================================================
-pred_prec <- predict(r4_v2, newdata = new_prec, type = "link", se.fit = TRUE, re.form = NA)
-new_prec$fit_link <- pred_prec$fit
-new_prec$se_link  <- pred_prec$se.fit
-
-new_prec <- new_prec %>%
-  mutate(
-    fit_link_low  = fit_link - 1.96 * se_link,
-    fit_link_high = fit_link + 1.96 * se_link
-  )
 
 # =====================================================
 # GRÁFICOS
 # =====================================================
 
 # (1) Exploratorio temp (respuesta)
-p_temp_resp <- ggplot(data, aes(x = tempmean, y = proporcion)) +
+p_temp_resp <- ggplot(data, aes(x = tempmean, y = nn.plant.proportion)) +
   geom_point(alpha = 0.4) +
   geom_smooth(method = "loess", se = FALSE, color = "steelblue", linewidth = 1.2) +
   theme_minimal(base_size = 14) +
@@ -273,7 +259,7 @@ p_temp_logit <- ggplot(new_temp, aes(x = tempmean_scaled, y = fit_link)) +
   labs(x = "Mean temperature (°C)", y = "Logit (linear predictor)")
 
 # (3) Exploratorio precip (respuesta)
-p_prec_resp <- ggplot(data, aes(x = precipmean, y = proporcion)) +
+p_prec_resp <- ggplot(data, aes(x = precipmean, y = nn.plant.proportion)) +
   geom_point(alpha = 0.4) +
   geom_smooth(method = "loess", se = FALSE, color = "steelblue", linewidth = 1.2) +
   theme_minimal(base_size = 14) +
@@ -301,15 +287,15 @@ final_plot
 
 
 # ----------------------------------------------------------------
-# 11. Resumen por nivel urbano (barras)
+# 11. Resumen pornative.richnessivel urbano (barras)
 # ----------------------------------------------------------------
 data <- as.data.frame(data)
 
 resumen <- data %>%
   group_by(tipo) %>%
   summarise(
-    mean_non_native = mean(proporcion, na.rm = TRUE),
-    total_area      = sum(area_km, na.rm = TRUE),
+    mean_non_native = mean(nn.plant.proportion,na.rm = TRUE),
+    total_area      = sum(area_km,na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -318,7 +304,7 @@ ggplot(resumen, aes(x = reorder(tipo, -mean_non_native),
                     y = mean_non_native, fill = mean_non_native)) +
   geom_col() +
   scale_fill_viridis_c(option = "viridis", direction = -1) +
-  labs(x = "Urban level", y = "Nonnative plants proportion") +
+  labs(x = "Urban level", y = "Non-native plants proportion") +
   theme_classic(base_size = 20) +
     theme(
       legend.position = "none",
