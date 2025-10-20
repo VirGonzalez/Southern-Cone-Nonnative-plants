@@ -30,7 +30,7 @@ library(viridis)      # escalas viridis
 # ----------------------------------------------------------------
 # 1. Cargar shapefile con datos
 # ----------------------------------------------------------------
-data <- st_read("Submission/dataset.gpkg")
+data <- st_read("D:/Paper Biodiversidad Urbana/Submission/Repositorio/Shapefile/dataset1.gpkg")
 str(data)
 names(data)
 # ----------------------------------------------------------------
@@ -38,21 +38,21 @@ names(data)
 # ----------------------------------------------------------------
 data$urban.level <- as.character(data$urban.level)
 
-mean_tax_per_group <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = mean,native.richnessa.rm = TRUE)
-sd_tax_per_group   <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = sd,native.richnessa.rm = TRUE)
+mean_tax_per_group <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = mean,na.rm = TRUE)
+sd_tax_per_group   <- aggregate(data$nn.plant.proportion, list(data$urban.level), FUN = sd,na.rm = TRUE)
 merge(mean_tax_per_group, sd_tax_per_group, by = "Group.1")
 
-sum_tax_per_group <- aggregate(data$native_occurrence, list(data$urban.level), FUN = sum,native.richnessa.rm = TRUE)
+sum_tax_per_group <- aggregate(data$native_occurrence, list(data$urban.level), FUN = sum,na.rm = TRUE)
 
-sum_exoticas <- sum(data$non.native.plant.occurrence,native.richnessa.rm = TRUE)
-sum_nativas  <- sum(data$native_occurrence,native.richnessa.rm = TRUE)
+sum_exoticas <- sum(data$non.native.plant.occurrence,na.rm = TRUE)
+sum_nativas  <- sum(data$native_occurrence,na.rm = TRUE)
 sum_total    <- sum_exoticas + sum_nativas
 
 # ----------------------------------------------------------------
 # 3. Escalar variables predictoras
 # ----------------------------------------------------------------
 data <- data %>%
-  mutate(across(c(crop.percentage, lc.lc.diversityersity,native.richnessative.richness, precipmean, 
+  mutate(across(c(crop.percentage, lc.diversity,native.richness, precipmean, 
     mean.foundation, fire.frequency, urban.gravity, tempmean),
                 ~ as.numeric(scale(.)), 
                 .names = "{.col}_scaled"))
@@ -64,7 +64,7 @@ data$urban.level <- ifelse(data$urban.level == 1.00, 'Metropoli',
              ifelse(data$urban.level == 2.00, 'Big cities',
              ifelse(data$urban.level == 3.00, 'Intermediate cities',
              ifelse(data$urban.level == 4.00, 'Small cities',
-             ifelse(data$urban.level == 5.00, 'Towns',native.richnessA)))))
+             ifelse(data$urban.level == 5.00, 'Towns',NA)))))
 
 data$urban.level[is.na(data$urban.level)] <- "Remote areas"
 
@@ -77,7 +77,7 @@ data$urban.level <- factor(data$urban.level, levels = c('Metropoli', 'Big cities
 # ----------------------------------------------------------------
 data <- data[!is.na(data$precipmean), ]
 data$nn.plant.proportion <- data$non.native.plant.occurrence / (data$non.native.plant.occurrence + data$native_occurrence)
-data$nn.plant.proportion <- (data$nn.plant.proportion * (nrow(data) - 1) + 0.5) /native.richnessrow(data)
+data$nn.plant.proportion <- (data$nn.plant.proportion * (nrow(data) - 1) + 0.5) /nrow(data)
 
 # ----------------------------------------------------------------
 # 6. Ajustar modelo mixto beta inflado en 0/1
