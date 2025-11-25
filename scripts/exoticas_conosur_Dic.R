@@ -101,8 +101,33 @@ exp(coef(r4_v2)$cond)
 random_effects <- ranef(r4_v2, condVar = TRUE)
 re_tidy <- tidy(r4_v2, effects = "ran_vals", conf.int = TRUE)
 
-plot_model(r4_v2, type = "re", show.data = TRUE)
-plot_model(r4_v2, type = "est", show.data = TRUE)
+library(ggplot2)
+
+re_tidy$level <- factor(re_tidy$level, levels = c('Metropoli', 'Big cities', 
+                                          'Intermediate cities', 'Small cities', 
+                                          'Towns', 'Remote areas'))
+
+re_tidy$signo <- ifelse(re_tidy$estimate > 0, "Positivo", "Negativo")
+
+ggplot(re_tidy, aes(x = level, y = estimate, color = signo)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+
+  # Agregar etiquetas con los valores
+  geom_text(aes(label = round(estimate, 3)),
+            hjust = -0.2, vjust = 0.5, size = 3, color = "black") +
+
+  scale_color_manual(values = c("Positivo" = "#0072B2", "Negativo" = "#D55E00")) +
+  labs(
+    x = "Random effects",
+    y = "Intercept"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 # ----------------------------------------------------------------
 # 8. Varianza y ANOVA
@@ -322,3 +347,85 @@ ggplot(resumen, aes(x = reorder(tipo, -total_area),
   labs(title = "Surface area (km) for each urban level") +
   theme_base(base_size = 14) +
   theme(legend.position = "none")
+
+
+###############analisis de residuos##############
+
+library(glmmTMB)
+library(DHARMa)
+library(ggplot2)
+
+res <- simulateResiduals(r4_v2)
+plot(res)
+
+testDispersion(res)
+testZeroInflation(res)
+testUniformity(res)
+plotResiduals(res, r4_v2$fitted.values)
+
+
+data$residuals <- residuals(r4_v2, type = "pearson")
+data$fitted <- fitted(r4_v2)
+
+ggplot(data, aes(fitted, residuals)) +
+  geom_point() +
+  geom_smooth(method="loess") +
+  theme_minimal()
+
+###########nuevo modelo con residuos
+
+library(DHARMa)
+
+res_r4 <- simulateResiduals(r4_v2)
+data$res_r4 <- res_r4$scaledResiduals
+
+library(lme4)
+
+m_res <- lmer(
+  res_r4 ~ crop.percentage_scaled + lc.diversity_scaled +
+    mean.foundation_scaled + native.richness_scaled +
+    precipmean_scaled + I(precipmean_scaled^2) +
+    tempmean_scaled   + I(tempmean_scaled^2) +
+    (1|urban.level),
+  data = data
+)
+summary(m_res)
+
+anova(m_res)
+library(car)
+Anova(m_res, type = 2)   # recomendado
+
+
+r4_v3 <- glmmTMB(
+  nn.plant.proportion ~ crop.percentage_scaled + lc.diversity_scaled +
+    mean.foundation_scaled + native.richness_scaled + I(native.richness_scaled^2) +
+    precipmean_scaled + I(precipmean_scaled^2) +
+    tempmean_scaled   + I(tempmean_scaled^2) +
+    (1|urban.level),
+  data = data,
+  family = beta_family(link = "logit"),
+  ziformula = ~1
+)
+
+summary(r4_v3 )
+
+res <- simulateResiduals(r4_v3)
+plot(res)
+
+data$res <- res$scaledResiduals
+
+library(lme4)
+
+m_res <- lmer(
+  res ~ crop.percentage_scaled + lc.diversity_scaled +
+    mean.foundation_scaled + native.richness_scaled + I(native.richness_scaled^2) +
+    precipmean_scaled + I(precipmean_scaled^2) +
+    tempmean_scaled   + I(tempmean_scaled^2) +
+    (1|urban.level),
+  data = data
+)
+summary(m_res)
+
+anova(m_res)
+library(car)
+Anova(m_res, type = 2)   # recomendado
