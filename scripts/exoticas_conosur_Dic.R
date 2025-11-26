@@ -114,20 +114,25 @@ ggplot(re_tidy, aes(x = level, y = estimate, color = signo)) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
 
-  # Agregar etiquetas con los valores
+  # Agregar etiquetas con mayor tamaño
   geom_text(aes(label = round(estimate, 3)),
-            hjust = -0.2, vjust = 0.5, size = 3, color = "black") +
+            hjust = -0.2, vjust = 0.5, size = 4.5, color = "black") +
 
   scale_color_manual(values = c("Positivo" = "#0072B2", "Negativo" = "#D55E00")) +
   labs(
     x = "Random effects",
     y = "Intercept"
   ) +
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 16) +  # Aumenta el tamaño base
   theme(
+    axis.title = element_text(size = 16),
+    axis.text  = element_text(size = 14),
     legend.position = "none",
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 17),
+    axis.text.y = element_text(size = 17),
+    axis.title.y = element_text(size = 17)
   )
+
 
 # ----------------------------------------------------------------
 # 8. Varianza y ANOVA
@@ -243,7 +248,7 @@ p_temp <- ggplot(data, aes(x = tempmean, y = nn.plant.proportion)) +
             aes(x = tempmean, y = fit),
             inherit.aes = FALSE, color = "darkred", linewidth = 1) +
   theme_minimal(base_size = 14) +
-  labs(x = "Mean temperature (°C)", y = "Nonnative plant proportion") +
+  labs(x = "Mean temperature (°C)", y = "Non-native plant proportion") +
   coord_cartesian(ylim = c(0, 1))
 
 p_prec <- ggplot(data, aes(x = precipmean, y = nn.plant.proportion)) +
@@ -371,61 +376,3 @@ ggplot(data, aes(fitted, residuals)) +
   geom_point() +
   geom_smooth(method="loess") +
   theme_minimal()
-
-###########nuevo modelo con residuos
-
-library(DHARMa)
-
-res_r4 <- simulateResiduals(r4_v2)
-data$res_r4 <- res_r4$scaledResiduals
-
-library(lme4)
-
-m_res <- lmer(
-  res_r4 ~ crop.percentage_scaled + lc.diversity_scaled +
-    mean.foundation_scaled + native.richness_scaled +
-    precipmean_scaled + I(precipmean_scaled^2) +
-    tempmean_scaled   + I(tempmean_scaled^2) +
-    (1|urban.level),
-  data = data
-)
-summary(m_res)
-
-anova(m_res)
-library(car)
-Anova(m_res, type = 2)   # recomendado
-
-
-r4_v3 <- glmmTMB(
-  nn.plant.proportion ~ crop.percentage_scaled + lc.diversity_scaled +
-    mean.foundation_scaled + native.richness_scaled + I(native.richness_scaled^2) +
-    precipmean_scaled + I(precipmean_scaled^2) +
-    tempmean_scaled   + I(tempmean_scaled^2) +
-    (1|urban.level),
-  data = data,
-  family = beta_family(link = "logit"),
-  ziformula = ~1
-)
-
-summary(r4_v3 )
-
-res <- simulateResiduals(r4_v3)
-plot(res)
-
-data$res <- res$scaledResiduals
-
-library(lme4)
-
-m_res <- lmer(
-  res ~ crop.percentage_scaled + lc.diversity_scaled +
-    mean.foundation_scaled + native.richness_scaled + I(native.richness_scaled^2) +
-    precipmean_scaled + I(precipmean_scaled^2) +
-    tempmean_scaled   + I(tempmean_scaled^2) +
-    (1|urban.level),
-  data = data
-)
-summary(m_res)
-
-anova(m_res)
-library(car)
-Anova(m_res, type = 2)   # recomendado
