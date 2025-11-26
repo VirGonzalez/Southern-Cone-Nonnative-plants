@@ -353,26 +353,3 @@ ggplot(resumen, aes(x = reorder(tipo, -total_area),
   theme_base(base_size = 14) +
   theme(legend.position = "none")
 
-
-###############analisis de residuos##############
-
-library(glmmTMB)
-library(DHARMa)
-library(ggplot2)
-
-res <- simulateResiduals(r4_v2)
-plot(res)
-
-testDispersion(res)
-testZeroInflation(res)
-testUniformity(res)
-plotResiduals(res, r4_v2$fitted.values)
-
-
-data$residuals <- residuals(r4_v2, type = "pearson")
-data$fitted <- fitted(r4_v2)
-
-ggplot(data, aes(fitted, residuals)) +
-  geom_point() +
-  geom_smooth(method="loess") +
-  theme_minimal()
